@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from deepc_for_recommender import npDeePC as DeePC
 from deepc_for_recommender import npMPC as MPC
-from ilostmymind import generate_data  # replace with your actual file name
+from data_generation import generate_data  # replace with your actual file name
 import matplotlib.pyplot as plt
 
 # if we want new data for deepc
