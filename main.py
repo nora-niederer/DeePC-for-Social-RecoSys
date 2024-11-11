@@ -55,11 +55,7 @@ u_constraints = (np.array([0]), np.array([1]))  # Input must be between 0 and 1
 
 # Create the DeePC model
 deepc = DeePC(ud, yd, y_constraints, u_constraints, N, Tini, num_users, p, m)
-mpc = MPC(A, np.expand_dims(B, axis=1), N, u_constraints, y_constraints)
-
-# Setup model (this exists because you would give it the reference values and Q and R but we don't need any of those)
-deepc.setup()
-mpc.setup()
+mpc = MPC(A, np.expand_dims(B, axis=1), Lambda, N, u_constraints, y_constraints)
 
 # Initialize matrices and vectors
 x0 = np.random.rand(num_users)
@@ -71,6 +67,10 @@ uevo_deepc = np.zeros(simN-1+Tini)
 uevo_deepc[0:Tini] = np.random.rand(Tini)  # Initial input values (scalar)
 uevo_mpc = np.zeros(simN-1+Tini)
 uevo_mpc[0:Tini] = uevo_deepc[0:Tini]  # Initial input value (scalar)
+
+# Setup model
+deepc.setup()
+mpc.setup(x0)
 
 #Simulate Tini steps
 for k in range(Tini):

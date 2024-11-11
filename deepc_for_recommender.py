@@ -180,9 +180,10 @@ class npMPC:
         self.u_ref = cp.Parameter((self.N*self.m,))
         self.y_ini = cp.Parameter(self.p)
 
-    def setup(self, x0):
+    def setup(self, x0 = np.ndarray):
 
-        self.x0 = x0
+        self.x0 = cp.Parameter(x0.shape)
+        self.x0.value = x0
         #self.Q = np.kron(np.eye(self.N), self.Q)
         #self.R = np.kron(np.eye(self.N), self.R)
         #self.cost = cp.quad_form(self.y-self.y_ref, cp.psd_wrap(self.Q)) + cp.quad_form(self.u-self.u_ref, cp.psd_wrap(self.R))
@@ -199,7 +200,7 @@ class npMPC:
 
         for i in range(1,self.N):
             self.constraints.append(
-                self.y[self.p*i:self.p*(i+1)] == self.A@self.y[self.p*(i-1):self.p*i] + self.B@self.u[self.m*(i-1):self.m*i]
+                self.y[self.p*i:self.p*(i+1)] == self.A@self.y[self.p*(i-1):self.p*i] + self.B@self.u[self.m*(i-1):self.m*i] + self.Lambda@self.y[self.p*(i-1):self.p*i]
             )
 
         self.problem = cp.Problem(cp.Minimize(self.cost), self.constraints)
