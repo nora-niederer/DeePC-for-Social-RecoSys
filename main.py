@@ -103,8 +103,8 @@ for k in range(Tini, simN-1+Tini):
     optimal_behaviour_mpc = mpc.solve(xevo_mpc[:,k].flatten())
 
     # Update the input vector
-    uevo_deepc[k] = optimal_behaviour_deepc[0]
-    uevo_mpc[k] = optimal_behaviour_mpc[0]
+    uevo_deepc[k] = optimal_behaviour_deepc[0][0]
+    uevo_mpc[k] = optimal_behaviour_mpc[0][0]
 
 fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
