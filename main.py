@@ -9,28 +9,24 @@ import math
 new_data = False
 
 # simulation range
-simN = 10
+simN = 8
 
 # number of simulations
-sims = 2
+sims = 3
 sim_deePC = True #currently does nothing
 sim_MPC = True #currently does nothing
 
 # Define system parameters (only relevant if new_data == True)
 num_users = 20 
-num_steps = 500 # How many data points collected
+num_steps = 300 # How many data points collected
 sparsity_factor = 0.5 # % of max connections
 bias_factor = 1.0 # % of max bias
 
 m = 1    # Dimension of input (always 1)
 p = num_users   # Dimension of output
 
-N = 10   # Prediction horizon
+N = 15   # Prediction horizon
 Tini = 1   # Initial time 
-
-# Define cost matrizes
-Q = np.eye(num_steps*num_users)
-R = np.eye(num_steps)
 
 if new_data:
     # Call skript to generate data
@@ -64,12 +60,13 @@ uevo_deepc = np.zeros((sims, simN+Tini-1))
 uevo_mpc = np.zeros((sims, simN+Tini-1))
 
 for s in range(sims):
-    print(f"Running simulation #{s+1}")
+    print(f"Running simulation #{s+1}..")
     # Initialize matrices and vectors
     x0 = np.random.rand(num_users)
     xevo_deepc[s, :, 0] = x0  # initial state for all users
     xevo_mpc[s, :, 0] = x0  # initial state for all users
-    uevo_deepc[s, 0] = np.mean(xevo_deepc[s, :, 0])
+    #uevo_deepc[s, 0] = np.mean(xevo_deepc[s, :, 0])
+    uevo_deepc[s, 0] = np.random.rand()
     uevo_mpc[s, 0] = uevo_deepc[s, 0]
 
     if(Tini > 1):
@@ -83,11 +80,11 @@ for s in range(sims):
     #Simulate Tini steps
     for k in range(Tini):
         x_deepc = xevo_deepc[s, :, k]
-        x_deepc = A @ x_deepc + B * uevo_deepc[s, k - 1] + Lambda @ x0
+        x_deepc = A @ x_deepc + B * uevo_deepc[s, k] + Lambda @ x0
         xevo_deepc[s, :, k+1] = x_deepc
 
         x_mpc = xevo_mpc[s, :, k]
-        x_mpc = A @ x_mpc + B * uevo_mpc[s, k - 1] + Lambda @ x0
+        x_mpc = A @ x_mpc + B * uevo_mpc[s, k] + Lambda @ x0
         xevo_mpc[s, :, k+1] = x_mpc
 
 
@@ -97,22 +94,23 @@ for s in range(sims):
         # A is (num_users, num_users), xevo[:, k] is (num_users,)
         # B is (num_users,), and uevo[k] is scalar
 
-        x_deepc = xevo_deepc[s, :, k]
-        x_deepc = A @ x_deepc + B * uevo_deepc[s, k - 1] + Lambda @ x0
-        xevo_deepc[s, :, k+1] = x_deepc
-
-        x_mpc = xevo_mpc[s, :, k]
-        x_mpc = A @ x_mpc + B * uevo_mpc[s, k - 1] + Lambda @ x0
-        xevo_mpc[s, :, k+1] = x_mpc
-
         # Calculate optimal inputs
         # Assuming model.solve() returns a tuple or array where the first element is the optimal input
-        optimal_behaviour_deepc = deepc.solve(uevo_deepc[s, k-Tini:k].flatten(), xevo_deepc[s, :, k-Tini:k].flatten())
+        optimal_behaviour_deepc = deepc.solve(uevo_deepc[s, k-Tini:k], xevo_deepc[s, :, k-Tini:k].flatten())
         optimal_behaviour_mpc = mpc.solve(xevo_mpc[s, :, k].flatten())
 
         # Update the input vector
         uevo_deepc[s, k] = optimal_behaviour_deepc[0][0]
         uevo_mpc[s, k] = optimal_behaviour_mpc[0][0]
+
+        # Applying input
+        x_deepc = xevo_deepc[s, :, k]
+        x_deepc = A @ x_deepc + B * uevo_deepc[s, k] + Lambda @ x0
+        xevo_deepc[s, :, k+1] = x_deepc
+
+        x_mpc = xevo_mpc[s, :, k]
+        x_mpc = A @ x_mpc + B * uevo_mpc[s, k] + Lambda @ x0
+        xevo_mpc[s, :, k+1] = x_mpc
 
 print("Plotting..")
 
@@ -163,5 +161,5 @@ fig.legend([handle0, handle1, handle2], ["State i's opinion", "Mean opinion", "P
 fig.suptitle(f"Comparison of DeePC and MPC Opinion Trajectories (num_steps={num_steps}, Tini={Tini})", fontsize=16, fontweight='bold')
 
 # Adjust the layout and spacing between subplots
-plt.tight_layout(pad= 2 + sims/2)  # Add more padding between subplots
+plt.tight_layout(pad = 3 + sims/2)  # Add more padding between subplots
 plt.show()
