@@ -12,9 +12,9 @@ new_data = False
 simN = 10
 
 # number of simulations
-sims = 7
-sim_deePC = True
-sim_MPC = True
+sims = 6
+sim_deePC = True #currently does nothing
+sim_MPC = True #currently does nothing
 
 # Define system parameters (only relevant if new_data == True)
 num_users = 20 
@@ -65,7 +65,7 @@ uevo_deepc = np.zeros((sims, simN+Tini-1))
 uevo_mpc = np.zeros((sims, simN+Tini-1))
 
 for s in range(sims):
-    print(f"Simulation #{s+1}")
+    print(f"Running simulation #{s+1}")
     # Initialize matrices and vectors
     x0 = np.random.rand(num_users)
     xevo_deepc[s, :, 0] = x0  # initial state for all users
@@ -115,6 +115,8 @@ for s in range(sims):
         uevo_deepc[s, k] = optimal_behaviour_deepc[0][0]
         uevo_mpc[s, k] = optimal_behaviour_mpc[0][0]
 
+print("Plotting..")
+
 # Calculate the number of columns (3 rows per column, or adjust as needed)
 max_rows_per_column = 3
 num_columns = 2*math.ceil(sims / max_rows_per_column)
@@ -127,21 +129,18 @@ if sims > max_rows_per_column:
 # Create a figure and axes for the grid layout
 fig, axes = plt.subplots(num_rows, num_columns, figsize=(4 * num_columns, 4 * num_rows), sharex=True)
 
-# Flatten axes for easy indexing (in case num_rows * num_columns is larger than needed)
-#axes = axes.flatten()
-
 # Plot for each subplot (DeepC on left side, MPC on right side)
 for i in range(sims):
     # Plot DeepC on the left column
     ax_deepc = axes[i%3, math.floor(i/3)]  # Subplot for DeepC
     for k in range(num_users):
-        ax_deepc.plot(xevo_deepc[i, k, :], linewidth=0.5, color=[0, 0, 0])  # Plot each user's trajectory in black
-    ax_deepc.plot(np.mean(xevo_deepc[i, :, :], axis=0), linewidth=1.0, color='magenta', label='Mean Opinion')
-    ax_deepc.plot(uevo_deepc[i, :], linewidth=1.0, color='b', label='Input (DeepC)')
+        handle0, = ax_deepc.plot(xevo_deepc[i, k, :], linewidth=0.5, color=[0, 0, 0])  # Plot each user's trajectory in black
+    handle1, = ax_deepc.plot(np.mean(xevo_deepc[i, :, :], axis=0), linewidth=1.0, color='magenta', label='Mean Opinion')
+    handle2, = ax_deepc.plot(uevo_deepc[i, :], linewidth=1.0, color='b', label='Input (DeepC)')
     ax_deepc.set_title(f"DeePC - Plot {i+1}", pad=15)
     ax_deepc.set_xlabel('Timestep')
     ax_deepc.set_ylabel('Opinion')
-    ax_deepc.legend(loc='upper right')
+    #ax_deepc.legend(loc='upper right')
     ax_deepc.grid(True)
 
     # Plot MPC on the right column
@@ -153,17 +152,13 @@ for i in range(sims):
     ax_mpc.set_title(f"MPC - Plot {i+1}", pad=15)
     ax_mpc.set_xlabel('Timestep')
     ax_mpc.set_ylabel('Opinion')
-    ax_mpc.legend(loc='upper right')
+    #ax_mpc.legend(loc='upper right')
     ax_mpc.grid(True)
 
-# Remove any extra subplots if there are unused axes
-for j in range(sims, math.ceil(len(axes)/2)):
-    axes[j, math.floor(num_columns/2)].axis('off')  # Turn off any unused axes
-# for j in range(2*sims, len(axes)):
-#     axes[j].axis('off')
 
+fig.legend([handle0, handle1, handle2], ["State i's opinion", "Mean opinion", "Proposed Input by Algo"], loc='upper center', ncol=3, fontsize=12, bbox_to_anchor=(0.5, 0.95), frameon=False)
 fig.suptitle(f"Comparison of DeePC and MPC Opinion Trajectories (num_steps={num_steps}, Tini={Tini})", fontsize=16, fontweight='bold')
 
 # Adjust the layout and spacing between subplots
-plt.tight_layout(pad=sims/2)  # Add more padding between subplots
+plt.tight_layout(pad=sims/1.5)  # Add more padding between subplots
 plt.show()
