@@ -1,7 +1,7 @@
 import numpy as np
 from deepc_for_recommender import npDeePC as DeePC
 from deepc_for_recommender import npMPC as MPC
-from data_generation import generate_data  # replace with your actual file name
+from data_generation import generate_data 
 import matplotlib.pyplot as plt
 import math
 
@@ -9,10 +9,11 @@ import math
 new_data = False
 
 # simulation range
-simN = 20
+simN = 10
+
 
 # number of simulations
-sims = 50
+sims = 10
 show_state_plt = False 
 show_cost_plt = True
 
@@ -26,7 +27,7 @@ m = 1    # Dimension of input (always 1)
 p = num_users   # Dimension of output
 
 N = 15   # Prediction horizon
-Tini = 1   # Initial time 
+Tini = 3   # Initial time 
 
 if new_data:
     # Call skript to generate data
@@ -189,13 +190,13 @@ if show_cost_plt:
     cost_mpc = np.mean(cost_mpc, axis=0)
 
     # Plot the first line
-    plt.plot(cost_deepc, label=f"DeePC", color='blue')
+    plt.plot(cost_deepc[Tini:-1], label=f"DeePC", color='blue')
 
     # Plot the second line
-    plt.plot(cost_mpc, label=f"MPC", color='red')
+    plt.plot(cost_mpc[Tini:-1], label=f"MPC", color='red')
 
     # Customize the plot
-    plt.title(f"Mean cost for {sims} simulations")  # Title of the plot
+    plt.title(f"Mean cost for {sims} simulations and Tini={Tini}")  # Title of the plot
     plt.xlabel("Timestep")  # Label for the x-axis
     plt.ylabel("Cost")  # Label for the y-axis
     plt.legend()  # Show a legend to identify the lines
