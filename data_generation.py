@@ -1,6 +1,6 @@
 import numpy as np
 
-def generate_data(num_users, num_steps, sparsity_factor, bias_factor):
+def generate_data(num_users, num_steps, sparsity_factor, bias_factor, data_name="data"):
     # Define constants
     max_connections = num_users * (num_users + 1)
     connections = round(sparsity_factor * max_connections)
@@ -32,7 +32,7 @@ def generate_data(num_users, num_steps, sparsity_factor, bias_factor):
         xd[:, k] = x
 
     # Save data
-    np.savez('data.npz', A=A, B=B, Lambda=Lambda, ud=ud, xd=xd)
+    np.savez(f"{data_name}.npz", A=A, B=B, Lambda=Lambda, ud=ud, xd=xd)
 
 def generate_sparse_row_stochastic_matrix(m, n, non_zero_entries):
     # Generates an m x n sparse row stochastic matrix with a specified number of non-zero entries
