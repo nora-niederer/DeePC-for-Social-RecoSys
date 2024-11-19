@@ -17,6 +17,7 @@ def generate_data(num_users, num_steps, sparsity_factor, bias_factor, data_name=
 
     # Initial opinion
     x0 = np.random.rand(num_users)
+    # x0.sort()
 
     # Random inputs
     ud = np.random.rand(num_steps)

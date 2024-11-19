@@ -10,28 +10,32 @@ import math
 datasets = 1
 
 # simulation range
-simN = 10
+simN = 12
 
 # number of simulations
-sims = 10
+sims = 20
 show_state_plt = False 
 show_cost_plt = True
 
 # Define system parameters (only relevant if new_data == True)
+new_data = False
 num_users = 20 
-num_steps = 300 # How many data points collected
+num_steps = 400 # How many data points collected
 sparsity_factor = 0.5 # % of max connections
 bias_factor = 1.0 # % of max bias
 
 m = 1    # Dimension of input (always 1)
 p = num_users   # Dimension of output
 
-N = 10   # Prediction horizon
+N = 5   # Prediction horizon
 Tini = 1   # Initial time 
 
 print(f"Trying {datasets} different datasets")
 
-for i in range(datasets):
-    runsim(True, num_users, num_steps, sparsity_factor, bias_factor, simN,
-           sims, show_state_plt, show_cost_plt, N, Tini, f"data{i}")
+#plt.ion()
 
+for i in range(datasets):
+    runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor, simN,
+           sims, show_state_plt, show_cost_plt, N, Tini, None, None, 0.001, f"data{i}")
+
+#plt.show()

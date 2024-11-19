@@ -46,7 +46,12 @@ class npDeePC:
         
         # Construct data matrices
         U = block_hankel(w=ud.reshape((m*self.T,)), L=Tini+N, d=m)
+        U_u, S_u, Vt_u = np.linalg.svd(U)
+        print(S_u)
         Y = block_hankel(w=yd.reshape((p*self.T,)), L=Tini+N, d=p)
+        U_y, S_y, Vt_y = np.linalg.svd(Y)
+        print(S_y)
+                
         self.Up = U[0:m*Tini,:]
         self.Yp = Y[0:p*Tini,:]
         self.Uf = U[Tini*m:,:]

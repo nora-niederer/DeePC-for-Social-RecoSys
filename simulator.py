@@ -7,7 +7,7 @@ import math
 
 def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
            simrange, sims, plt_state, plt_cost,
-           N, Tini, data_name="data"):
+           N, Tini, lam_g1=None, lam_g2=None, lam_y=None, data_name="data"):
     
     print(f"Running {sims} Simulations with {N} prediction Horizon and Tini={Tini}")
 
@@ -42,13 +42,14 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
 
     xevo_deepc = np.zeros((sims, num_users, simrange+Tini))
     xevo_mpc = np.zeros((sims, num_users, simrange+Tini))
-    uevo_deepc = np.zeros((sims, simrange+Tini))
-    uevo_mpc = np.zeros((sims, simrange+Tini))
+    uevo_deepc = np.zeros((sims, simrange+Tini-1))
+    uevo_mpc = np.zeros((sims, simrange+Tini-1))
 
     for s in range(sims):
         print(f"Running simulation #{s+1}..")
         # Initialize matrices and vectors
         x0 = np.random.rand(num_users)
+        # x0.sort()
         xevo_deepc[s, :, 0] = x0  # initial state for all users
         xevo_mpc[s, :, 0] = x0  # initial state for all users
         #uevo_deepc[s, 0] = np.mean(xevo_deepc[s, :, 0])
@@ -60,7 +61,7 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
             uevo_mpc[s, 1:Tini] = uevo_deepc[s, 1:Tini]  
 
         # Setup model
-        deepc.setup()
+        deepc.setup(lam_g1, lam_g2, lam_y)
         mpc.setup(x0)
 
         #Simulate Tini steps
@@ -152,18 +153,24 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
     if plt_cost:
 
         # Calculate costs
-        cost_deepc = np.zeros((sims, simrange+Tini))
-        cost_mpc = np.zeros((sims, simrange+Tini))
+        cost_deepc_sort = np.zeros((sims, simrange+Tini-1))
+        #cost_deepc_unsort = np.zeros((sims-20, simrange+Tini-1))
+        cost_mpc = np.zeros((sims, simrange+Tini-1))
         
         for i in range(sims):
-            cost_deepc[i, :] = np.sum((xevo_deepc[i, :, :] - uevo_deepc[i, :]) ** 2, axis=0)
-            cost_mpc[i, :] = np.sum((xevo_mpc[i, :, :] - uevo_mpc[i, :]) ** 2, axis=0)
+            #if i < 20:
+            cost_deepc_sort[i, :] = np.sum((xevo_deepc[i, :, :-1] - uevo_deepc[i, :]) ** 2, axis=0)
+            #else:
+            #    cost_deepc_unsort[i-20, :] = np.sum((xevo_deepc[i, :, :-1] - uevo_deepc[i, :]) ** 2, axis=0)
+            cost_mpc[i, :] = np.sum((xevo_mpc[i, :, :-1] - uevo_mpc[i, :]) ** 2, axis=0)
 
-        cost_deepc = np.mean(cost_deepc, axis=0)
+        cost_deepc_sort = np.mean(cost_deepc_sort, axis=0)
+        #cost_deepc_unsort = np.mean(cost_deepc_unsort, axis=0)
         cost_mpc = np.mean(cost_mpc, axis=0)
 
         # Plot the first line
-        plt.plot(cost_deepc[Tini:-1], label=f"DeePC", color='blue')
+        plt.plot(cost_deepc_sort[Tini:-1], label=f"DeePC", color='blue')
+        #plt.plot(cost_deepc_unsort[Tini:-1], label=f"DeePC Unsorted", color='green')
 
         # Plot the second line
         plt.plot(cost_mpc[Tini:-1], label=f"MPC", color='red')
@@ -175,5 +182,8 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
         plt.legend()  # Show a legend to identify the lines
         plt.grid(True)  # Add grid lines for better readability
 
+        #plt.yscale('log')
+
         # Display the plot
-        plt.show()
+        plt.show(block=True)
+        #plt.pause(0.2)
