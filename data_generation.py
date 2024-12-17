@@ -1,6 +1,6 @@
 import numpy as np
 
-def generate_data(num_users, num_steps, sparsity_factor, bias_factor, data_name="data"):
+def generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise, data_name="data"):
     # Define constants
     max_connections = num_users * (num_users + 1)
     connections = round(sparsity_factor * max_connections)
@@ -31,6 +31,12 @@ def generate_data(num_users, num_steps, sparsity_factor, bias_factor, data_name=
     for k in range(1, num_steps):
         x = A @ x + B * ud[k - 1] + Lambda @ x0
         xd[:, k] = x
+
+    if noise:
+        noise_matrix = np.random.uniform(low=-noise, high=noise, size=(num_users, num_steps))
+        noisy_xd = xd + noise_matrix
+        noisy_xd_clipped = np.clip(noisy_xd, 0, 1)
+        xd = noisy_xd_clipped
 
     # Save data
     np.savez(f"{data_name}.npz", A=A, B=B, Lambda=Lambda, ud=ud, xd=xd)

@@ -5,9 +5,10 @@ from data_generation import generate_data
 import matplotlib.pyplot as plt
 import math
 
+
 def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
-           simrange, sims, plt_state, plt_cost,
-           N, Tini, lam_g1=None, lam_g2=None, lam_y=None, data_name="data"):
+           simrange, sims, plt_state, plt_cost, show_acc_cost,
+           N, Tini, noise=False, lam_g1=None, lam_g2=None, lam_y=None, data_name="data"):
     
     print(f"Running {sims} Simulations with {N} prediction Horizon and Tini={Tini}")
 
@@ -17,7 +18,7 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
     if new_data:
         # Call skript to generate data
         print(f"Starting Data generation for {num_users} users, {num_steps} steps, sparsity={sparsity_factor} and bias={bias_factor}")
-        generate_data(num_users, num_steps, sparsity_factor, bias_factor, data_name)
+        generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise,data_name)
         print("Finished Data collection")
     else: 
         print("Skipping new Data generation")
@@ -48,7 +49,8 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
     for s in range(sims):
         print(f"Running simulation #{s+1}..")
         # Initialize matrices and vectors
-        x0 = np.random.rand(num_users)
+        #x0 = np.random.rand(num_users)
+        x0 = yd[:, 0]
         # x0.sort()
         xevo_deepc[s, :, 0] = x0  # initial state for all users
         xevo_mpc[s, :, 0] = x0  # initial state for all users
@@ -79,10 +81,14 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
         for k in range(Tini, simrange-1+Tini):
             # A is (num_users, num_users), xevo[:, k] is (num_users,)
             # B is (num_users,), and uevo[k] is scalar
-
+            if noise:
+                noise_vector = np.random.uniform(low=-noise, high=noise, size=xevo_mpc[s, :, k].flatten().size)
+                optimal_behaviour_deepc = deepc.solve(uevo_deepc[s, k-Tini:k], np.clip(noise_vector+xevo_deepc[s,:,k], 0, 1))
+                optimal_behaviour_mpc = mpc.solve(np.clip(noise_vector+xevo_mpc[s,:,k], 0, 1))
+            else:
             # Calculate optimal inputs
-            optimal_behaviour_deepc = deepc.solve(uevo_deepc[s, k-Tini:k], xevo_deepc[s, :, k-Tini:k].flatten())
-            optimal_behaviour_mpc = mpc.solve(xevo_mpc[s, :, k].flatten())
+                optimal_behaviour_deepc = deepc.solve(uevo_deepc[s, k-Tini:k], xevo_deepc[s, :, k-Tini:k].flatten())
+                optimal_behaviour_mpc = mpc.solve(xevo_mpc[s, :, k].flatten())
 
             # Update the input vector
             uevo_deepc[s, k] = optimal_behaviour_deepc[0][0]
@@ -184,6 +190,10 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
 
         #plt.yscale('log')
 
+        plt.savefig('evo1.pdf', format='pdf')
+
         # Display the plot
         plt.show(block=True)
         #plt.pause(0.2)
+
+    return [np.sum((xevo_deepc[sims-1, :, -2] - uevo_deepc[sims-1, -1]) ** 2, axis=0), np.sum((xevo_mpc[sims-1, :, -2] - uevo_mpc[sims-1, -1]) ** 2, axis=0)]
