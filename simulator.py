@@ -10,16 +10,16 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
            simrange, sims, plt_state, plt_cost, show_acc_cost,
            N, Tini, noise=False, lam_g1=None, lam_g2=None, lam_y=None, data_name="data"):
     
-    print(f"Running {sims} Simulations with {N} prediction Horizon and Tini={Tini}")
+    #print(f"Running {sims} Simulations with {N} prediction Horizon and Tini={Tini}")
 
     m = 1    # Dimension of input (always 1)
     p = num_users   # Dimension of output
 
     if new_data:
         # Call skript to generate data
-        print(f"Starting Data generation for {num_users} users, {num_steps} steps, sparsity={sparsity_factor} and bias={bias_factor}")
+        #print(f"Starting Data generation for {num_users} users, {num_steps} steps, sparsity={sparsity_factor} and bias={bias_factor}")
         generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise,data_name)
-        print("Finished Data collection")
+        #print("Finished Data collection")
     else: 
         print("Skipping new Data generation")
 
@@ -47,15 +47,14 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
     uevo_mpc = np.zeros((sims, simrange+Tini-1))
 
     for s in range(sims):
-        print(f"Running simulation #{s+1}..")
+        #print(f"Running simulation #{s+1}..")
         # Initialize matrices and vectors
-        #x0 = np.random.rand(num_users)
         x0 = yd[:, 0]
         # x0.sort()
         xevo_deepc[s, :, 0] = x0  # initial state for all users
         xevo_mpc[s, :, 0] = x0  # initial state for all users
         #uevo_deepc[s, 0] = np.mean(xevo_deepc[s, :, 0])
-        uevo_deepc[s, 0] = np.random.rand()
+        uevo_deepc[s, 0] = ud[0]
         uevo_mpc[s, 0] = uevo_deepc[s, 0]
 
         if(Tini > 1):
@@ -103,8 +102,6 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
             x_mpc = A @ x_mpc + B * uevo_mpc[s, k] + Lambda @ x0
             xevo_mpc[s, :, k+1] = x_mpc
 
-    print("Plotting..")
-
     if plt_state:
         # Calculate the number of columns (3 rows per column, or adjust as needed)
         max_rows_per_column = 3
@@ -150,10 +147,15 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
 
         # Add legend and title
         fig.legend([handle0, handle1, handle2], ["State i's opinion", "Mean opinion", "Proposed Input by Algo"], loc='upper center', ncol=3, fontsize=12, bbox_to_anchor=(0.5, 0.95), frameon=False)
-        fig.suptitle(f"Comparison of DeePC and MPC Opinion Trajectories (num_steps={num_steps}, Tini={Tini})", fontsize=16, fontweight='bold')
+        fig.suptitle(f"Comparison of DeePC and MPC Opinion Trajectories") # (num_steps={num_steps}, Tini={Tini})", fontsize=16, fontweight='bold')
+
+
 
         # Adjust the layout and spacing between subplots
         plt.tight_layout(pad = 3 + sims/2)  # Add more padding between subplots
+
+        plt.savefig(f"StatePlot_Users{num_users}_Steps{simrange}_DataPoints{num_steps}_Horizon{N}_Sparsity{sparsity_factor}_Bias{bias_factor}_Tini{Tini}.pdf", format='pdf')
+
         plt.show()
 
     if plt_cost:
