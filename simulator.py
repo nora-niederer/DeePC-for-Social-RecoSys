@@ -80,8 +80,9 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
         for k in range(Tini, simrange-1+Tini):
             # A is (num_users, num_users), xevo[:, k] is (num_users,)
             # B is (num_users,), and uevo[k] is scalar
-            if noise:
-                noise_vector = np.random.uniform(low=-noise, high=noise, size=xevo_mpc[s, :, k].flatten().size)
+            if noise > 0:  # Check if noise is not zero
+                # Generate noise centered around 0 with a standard deviation based on the variance
+                noise_vector = np.random.normal(loc=0, scale=np.sqrt(noise), size=xevo_mpc[s, :, k].flatten().size)
                 optimal_behaviour_deepc = deepc.solve(uevo_deepc[s, k-Tini:k], np.clip(noise_vector+xevo_deepc[s,:,k], 0, 1))
                 optimal_behaviour_mpc = mpc.solve(np.clip(noise_vector+xevo_mpc[s,:,k], 0, 1))
             else:
@@ -184,7 +185,7 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
         plt.plot(cost_mpc[Tini:-1], label=f"MPC", color='red')
 
         # Customize the plot
-        plt.title(f"Mean cost for {sims} simulations and Tini={Tini}")  # Title of the plot
+        plt.title(f"Cost evolution: DeePC vs MPC")  # Title of the plot
         plt.xlabel("Timestep")  # Label for the x-axis
         plt.ylabel("Cost")  # Label for the y-axis
         plt.legend()  # Show a legend to identify the lines
@@ -192,7 +193,7 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
 
         #plt.yscale('log')
 
-        plt.savefig('evo1.pdf', format='pdf')
+        plt.savefig('costevo2.pdf', format='pdf')
 
         # Display the plot
         plt.show(block=True)

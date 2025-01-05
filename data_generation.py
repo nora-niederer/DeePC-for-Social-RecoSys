@@ -32,8 +32,9 @@ def generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise, dat
         x = A @ x + B * ud[k - 1] + Lambda @ x0
         xd[:, k] = x
 
-    if noise:
-        noise_matrix = np.random.uniform(low=-noise, high=noise, size=(num_users, num_steps))
+    if noise > 0:  # Check if noise is not zero
+        # Generate noise centered around 0 with a standard deviation based on the variance
+        noise_matrix = np.random.normal(loc=0, scale=np.sqrt(noise), size=(num_users, num_steps))
         noisy_xd = xd + noise_matrix
         noisy_xd_clipped = np.clip(noisy_xd, 0, 1)
         xd = noisy_xd_clipped

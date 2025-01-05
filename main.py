@@ -13,29 +13,29 @@ import pandas as pd
 simN = 15
 
 # number of simulations
-sims = 1
+sims = 1 #artifact from old code, always leave on 1.
 
 #what to plot
-show_state_plt = False
-show_cost_plt = False
-show_acc_plt = False
-show_paramcompare_plt = True
+show_state_plt = False #State trajectories
+show_cost_plt = False #Cost trajectory 
+show_acc_plt = False #Steady state spectrum
+show_paramcompare_plt = True #Parameter tuning
 
 # Define system parameter to check
-new_data = True #artifact from old code always leave on true.
+new_data = True #artifact from old code, always leave on true.
 
-num_users = (5, 10, 20, 40)
+num_users = (15,)
 num_datapoints = (500,) #for DeePC
 sparsity_factor = (0.5,) # % of max connections
 bias_factor = (1.0,) # % of max bias 
+horizon = (1,5,10,20)   # Prediction horizon
+noise = None #min-max floating point value of random noise
 
 m = 1    # Dimension of input (always 1)
 p = num_users   # Dimension of output
-datasets =  1000 #of data sets to try
+datasets =  3 #of data sets to try
 
-N = 5   # Prediction horizon
 Tini = 1   # Initial time 
-noise = None #min-max floating point value of random noise
 
 # Set regularization parameters for DeePC
 DeePC_g1 = None
@@ -43,16 +43,16 @@ DeePC_g2 = None
 DeePC_y = None
 
 # Generate all combinations of the parameters
-parameter_combinations = itertools.product(num_users, num_datapoints, sparsity_factor, bias_factor)
+parameter_combinations = itertools.product(num_users, num_datapoints, sparsity_factor, bias_factor, horizon)
  
 # Initialize an empty list to store the results
 results = []
 
-for users, datapoints, sparsity, bias in parameter_combinations:
+for users, datapoints, sparsity, bias, N in parameter_combinations:
     print(f"Trying {datasets} different datasets: ")
     errors_system1 = [] 
     errors_system2 = [] 
-    print(users, datapoints, sparsity, bias)
+    print(users, datapoints, sparsity, bias, N)
     for i in range(datasets):
         print(f"Trying Dataset#{i}")
         try:
@@ -72,6 +72,7 @@ for users, datapoints, sparsity, bias in parameter_combinations:
         'datapoints': datapoints,
         'sparsity': sparsity,
         'bias': bias,
+        'horizon': N,
         'errors_system1': errors_system1,
         'errors_system2': errors_system2
     })
@@ -126,6 +127,8 @@ for users, datapoints, sparsity, bias in parameter_combinations:
 
 if show_paramcompare_plt:
 
+    plt.rcParams.update({'font.size': 16})  # Adjust the number for desired size
+
     df = pd.DataFrame(results)
 
     # Flatten the results to make it suitable for plotting
@@ -138,6 +141,7 @@ if show_paramcompare_plt:
                 'datapoints': row['datapoints'],
                 'sparsity': row['sparsity'],
                 'bias': row['bias'],
+                'horizon': row['horizon'],
                 'error_system1': row['errors_system1'][i],  # DeePC error
                 'error_system2': row['errors_system2'][i]   # MPC error
             })
@@ -147,7 +151,7 @@ if show_paramcompare_plt:
 
     # Group by the parameter combinations and store all errors for each combination
     grouped_df = flat_df.groupby(
-        ['users', 'datapoints', 'sparsity', 'bias'], as_index=False
+        ['users', 'datapoints', 'sparsity', 'bias', 'horizon'], as_index=False
     ).agg({
         'error_system1': list,  # Store all errors for System 1 (DeePC)
         'error_system2': list   # Store all errors for System 2 (MPC)
@@ -158,7 +162,8 @@ if show_paramcompare_plt:
             f"Users: {row['users']}" if len(num_users) > 1 else "",
             f"Data: {row['datapoints']}" if len(num_datapoints) > 1 else "",
             f"Sparsity: {row['sparsity']}" if len(sparsity_factor) > 1 else "",
-            f"Bias: {row['bias']}" if len(bias_factor) > 1 else ""
+            f"Bias: {row['bias']}" if len(bias_factor) > 1 else "",
+            f"Horizon: {row['horizon']}" if len(horizon) > 1 else ""
         ]).strip(' | '),  # Strip any trailing " | "
         axis=1
     )
