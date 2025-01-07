@@ -24,40 +24,50 @@ show_paramcompare_plt = True #Parameter tuning
 # Define system parameter to check
 new_data = True #artifact from old code, always leave on true.
 
-num_users = (15,)
-num_datapoints = (500,) #for DeePC
-sparsity_factor = (0.5,) # % of max connections
-bias_factor = (1.0,) # % of max bias 
-horizon = (1,5,10,20)   # Prediction horizon
-noise = None #min-max floating point value of random noise
+#Different testing parameters
+num_users = (15,) 
+num_datapoints = (200,) #for DeePC
+sparsity_factor = (0.5,) # floating point ratio of max connections
+bias_factor = (1.0,) # floating point ratio of max bias 
+horizon = (5,)   # Prediction horizon
+noise_var = (0, 0.1, 0.25,1, 4) #variance floating point value of random normal distr. noise
 
 m = 1    # Dimension of input (always 1)
 p = num_users   # Dimension of output
-datasets =  3 #of data sets to try
 
+#Don't put too high otherwise takes forever to run!
+datasets =  3000 #of data sets to try
+
+#Technically testing parameter but saw no result difference would need to be added to parameter combination.
 Tini = 1   # Initial time 
+
+totalcost = True #Collect total cost or just final cost?
 
 # Set regularization parameters for DeePC
 DeePC_g1 = None
 DeePC_g2 = None
-DeePC_y = None
+DeePC_y = 0.1
+
+#Set regularization parameters for MPC
+
+MPC_y = 0.1
 
 # Generate all combinations of the parameters
-parameter_combinations = itertools.product(num_users, num_datapoints, sparsity_factor, bias_factor, horizon)
+parameter_combinations = itertools.product(num_users, num_datapoints, sparsity_factor, bias_factor, horizon, noise_var)
  
 # Initialize an empty list to store the results
 results = []
 
-for users, datapoints, sparsity, bias, N in parameter_combinations:
+for users, datapoints, sparsity, bias, N, noise in parameter_combinations:
     print(f"Trying {datasets} different datasets: ")
     errors_system1 = [] 
     errors_system2 = [] 
-    print(users, datapoints, sparsity, bias, N)
+    print(users, datapoints, sparsity, bias, N, noise)
     for i in range(datasets):
         print(f"Trying Dataset#{i}")
         try:
             DeePC_error, MPC_error = runsim(new_data, users, datapoints, sparsity, bias, simN,
-                sims, show_state_plt, show_cost_plt, show_acc_plt, N, Tini, noise, DeePC_g1, DeePC_g2, DeePC_y, f"data{i}")
+                sims, show_state_plt, show_cost_plt, show_acc_plt, N, Tini, totalcost, noise, 1, DeePC_g1, DeePC_g2, DeePC_y, MPC_y,f"data{i}")
         except Exception as e:
             # Catch any error that occurs during the simulation
             print(f"Solver failed during simulation {i}. Skipping this dataset.")
@@ -73,6 +83,7 @@ for users, datapoints, sparsity, bias, N in parameter_combinations:
         'sparsity': sparsity,
         'bias': bias,
         'horizon': N,
+        'noise': noise,
         'errors_system1': errors_system1,
         'errors_system2': errors_system2
     })
@@ -115,11 +126,11 @@ for users, datapoints, sparsity, bias, N in parameter_combinations:
         # Customize labels, title, and legend
         ax.set_xticks(x)
         ax.set_xticklabels([f"DeePC (var={variance_system1:.2e})", f"MPC (var={variance_system2:.2e})"])
-        ax.set_ylabel('Steady-State Cost')
-        ax.set_title('Comparison of Steady-State Cost: Median with Spread')
+        ax.set_ylabel('Final Cost')
+        ax.set_title('Comparison of Final Cost: Median with Spread')
         
 
-        plt.savefig(f"Test_Users{num_users}_Steps{simN}_DataPoints{num_datapoints}_Horizon{N}_Sparsity{sparsity_factor}_Bias{bias_factor}_Tini{Tini}.pdf", format='pdf')
+        plt.savefig(f"Test_Users{num_users}_Steps{simN}_DataPoints{num_datapoints}_Horizon{noise}_Sparsity{sparsity_factor}_Bias{bias_factor}_Tini{Tini}.pdf", format='pdf')
 
         # Show plot
         plt.tight_layout()
@@ -142,6 +153,7 @@ if show_paramcompare_plt:
                 'sparsity': row['sparsity'],
                 'bias': row['bias'],
                 'horizon': row['horizon'],
+                'noise': row['noise'],
                 'error_system1': row['errors_system1'][i],  # DeePC error
                 'error_system2': row['errors_system2'][i]   # MPC error
             })
@@ -151,7 +163,7 @@ if show_paramcompare_plt:
 
     # Group by the parameter combinations and store all errors for each combination
     grouped_df = flat_df.groupby(
-        ['users', 'datapoints', 'sparsity', 'bias', 'horizon'], as_index=False
+        ['users', 'datapoints', 'sparsity', 'bias', 'horizon', 'noise'], as_index=False
     ).agg({
         'error_system1': list,  # Store all errors for System 1 (DeePC)
         'error_system2': list   # Store all errors for System 2 (MPC)
@@ -163,7 +175,8 @@ if show_paramcompare_plt:
             f"Data: {row['datapoints']}" if len(num_datapoints) > 1 else "",
             f"Sparsity: {row['sparsity']}" if len(sparsity_factor) > 1 else "",
             f"Bias: {row['bias']}" if len(bias_factor) > 1 else "",
-            f"Horizon: {row['horizon']}" if len(horizon) > 1 else ""
+            f"Horizon: {row['horizon']}" if len(horizon) > 1 else "",
+            f"Noise: {row['noise']}" if len(noise_var) > 1 else ""
         ]).strip(' | '),  # Strip any trailing " | "
         axis=1
     )
@@ -189,8 +202,8 @@ if show_paramcompare_plt:
     y = np.arange(len(grouped_df))  # The y locations for the bars (instead of x)
 
     # Plot both DeePC and MPC as grouped horizontal bars
-    ax.barh(y - width/2, grouped_df['median_system1'], width, alpha = 0.4,label='DeePC', color='red', xerr=grouped_df['std_dev_system1'], capsize=20, ecolor='black')
-    ax.barh(y + width/2, grouped_df['median_system2'], width, alpha=0.4,label='MPC', color='blue', xerr=grouped_df['std_dev_system2'], capsize=20, ecolor='black')
+    ax.barh(y - width/2, grouped_df['median_system1'], width, alpha = 0.4,label='DeePC', color='red', xerr=grouped_df['std_dev_system1'], capsize=15, ecolor='black')
+    ax.barh(y + width/2, grouped_df['median_system2'], width, alpha=0.4,label='MPC', color='blue', xerr=grouped_df['std_dev_system2'], capsize=15, ecolor='black')
 
     jitter = 0  # Adjust the spread of the dots
 
@@ -214,8 +227,12 @@ if show_paramcompare_plt:
 
     # Labeling and styling
     ax.set_ylabel('Parameter Combinations')
-    ax.set_xlabel('Steady-State Cost')
-    ax.set_title('Comparison of Steady-State Cost: DeePC vs MPC')
+    if totalcost:
+        ax.set_xlabel('Total Cost')
+        ax.set_title('Comparison of Total Cost: DeePC vs MPC')
+    else: 
+        ax.set_xlabel('Final Cost')
+        ax.set_title('Comparison of Final Cost: DeePC vs MPC')
     ax.set_yticks(y)
     ax.set_yticklabels(grouped_df['parameter_combination'])
 
@@ -228,7 +245,7 @@ if show_paramcompare_plt:
     plt.tight_layout()
 
     # Save figure as PDF
-    plt.savefig(f"NewParamComp_Users{num_users}_Steps{simN}_DataPoints{num_datapoints}_Horizon{N}_Sparsity{sparsity_factor}_Bias{bias_factor}_Tini{Tini}.pdf", format='pdf')
+    plt.savefig(f"TotalInternalNoiseParamComp_withreg_Sets{datasets}_Users{num_users}_Steps{simN}_DataPoints{num_datapoints}_Horizon{N}_Sparsity{sparsity_factor}_Bias{bias_factor}_Tini{Tini}_Noise{noise}.pdf", format='pdf')
 
     # Show the plot
     plt.show()

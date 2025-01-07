@@ -8,7 +8,7 @@ import math
 
 def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
            simrange, sims, plt_state, plt_cost, show_acc_cost,
-           N, Tini, noise=False, lam_g1=None, lam_g2=None, lam_y=None, data_name="data"):
+           N, Tini, totalcost, noise, internal_noise, lam_g1=None, lam_g2=None, lam_y=None, mpc_lam_y=None,data_name="data"):
     
     #print(f"Running {sims} Simulations with {N} prediction Horizon and Tini={Tini}")
 
@@ -18,7 +18,7 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
     if new_data:
         # Call skript to generate data
         #print(f"Starting Data generation for {num_users} users, {num_steps} steps, sparsity={sparsity_factor} and bias={bias_factor}")
-        generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise,data_name)
+        generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise, internal_noise ,data_name)
         #print("Finished Data collection")
     else: 
         print("Skipping new Data generation")
@@ -50,10 +50,8 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
         #print(f"Running simulation #{s+1}..")
         # Initialize matrices and vectors
         x0 = yd[:, 0]
-        # x0.sort()
         xevo_deepc[s, :, 0] = x0  # initial state for all users
         xevo_mpc[s, :, 0] = x0  # initial state for all users
-        #uevo_deepc[s, 0] = np.mean(xevo_deepc[s, :, 0])
         uevo_deepc[s, 0] = ud[0]
         uevo_mpc[s, 0] = uevo_deepc[s, 0]
 
@@ -63,7 +61,7 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
 
         # Setup model
         deepc.setup(lam_g1, lam_g2, lam_y)
-        mpc.setup(x0)
+        mpc.setup(x0, mpc_lam_y)
 
         #Simulate Tini steps
         for k in range(Tini):
@@ -96,6 +94,13 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
 
             # Applying input
             x_deepc = xevo_deepc[s, :, k]
+
+            # Applying internal noise
+            if internal_noise > 0:
+                noise_vector = np.random.normal(loc=0, scale=np.sqrt(internal_noise), size=x_deepc.size)
+                x_deepc= np.clip(noise_vector+x_deepc, 0, 1)
+                x_mpc = np.clip(noise_vector+x_mpc, 0, 1)
+
             x_deepc = A @ x_deepc + B * uevo_deepc[s, k] + Lambda @ x0
             xevo_deepc[s, :, k+1] = x_deepc
 
@@ -178,11 +183,11 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
         cost_mpc = np.mean(cost_mpc, axis=0)
 
         # Plot the first line
-        plt.plot(cost_deepc_sort[Tini:-1], label=f"DeePC", color='blue')
+        plt.plot(cost_deepc_sort[Tini:-1], label=f"DeePC", color='red')
         #plt.plot(cost_deepc_unsort[Tini:-1], label=f"DeePC Unsorted", color='green')
 
         # Plot the second line
-        plt.plot(cost_mpc[Tini:-1], label=f"MPC", color='red')
+        plt.plot(cost_mpc[Tini:-1], label=f"MPC", color='blue')
 
         # Customize the plot
         plt.title(f"Cost evolution: DeePC vs MPC")  # Title of the plot
@@ -199,4 +204,11 @@ def runsim(new_data, num_users, num_steps, sparsity_factor, bias_factor,
         plt.show(block=True)
         #plt.pause(0.2)
 
-    return [np.sum((xevo_deepc[sims-1, :, -2] - uevo_deepc[sims-1, -1]) ** 2, axis=0), np.sum((xevo_mpc[sims-1, :, -2] - uevo_mpc[sims-1, -1]) ** 2, axis=0)]
+    if totalcost:
+        total_sum_deepc = np.sum(np.sum((xevo_deepc[sims-1, :, 1:-2] - uevo_deepc[sims-1, 1:-1]) ** 2, axis=0))
+        total_sum_mpc = np.sum(np.sum((xevo_mpc[sims-1, :, 1:-2] - uevo_mpc[sims-1, 1:-1]) ** 2, axis=0))
+        
+        return [total_sum_deepc, total_sum_mpc]
+
+    else:
+        return [np.sum((xevo_deepc[sims-1, :, -2] - uevo_deepc[sims-1, -1]) ** 2, axis=0), np.sum((xevo_mpc[sims-1, :, -2] - uevo_mpc[sims-1, -1]) ** 2, axis=0)]

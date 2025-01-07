@@ -1,6 +1,6 @@
 import numpy as np
 
-def generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise, data_name="data"):
+def generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise, internal_noise,data_name="data"):
     # Define constants
     max_connections = num_users * (num_users + 1)
     connections = round(sparsity_factor * max_connections)
@@ -29,6 +29,9 @@ def generate_data(num_users, num_steps, sparsity_factor, bias_factor, noise, dat
     # Let model run
     x = x0
     for k in range(1, num_steps):
+        if internal_noise > 0:
+            noise_vector = np.random.normal(loc=0, scale=np.sqrt(internal_noise), size=x.size)
+            x = np.clip(noise_vector+x, 0, 1)
         x = A @ x + B * ud[k - 1] + Lambda @ x0
         xd[:, k] = x
 

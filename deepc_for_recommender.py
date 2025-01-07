@@ -185,8 +185,9 @@ class npMPC:
         self.u_ref = cp.Parameter((self.N*self.m,))
         self.y_ini = cp.Parameter(self.p)
 
-    def setup(self, x0 = np.ndarray):
+    def setup(self, x0 = np.ndarray, lam_y=None):
 
+        self.lam_y = lam_y
         self.x0 = cp.Parameter(x0.shape)
         self.x0.value = x0
         #self.Q = np.kron(np.eye(self.N), self.Q)
@@ -195,7 +196,8 @@ class npMPC:
         Extender = np.kron(np.eye(self.N), np.ones((self.p, 1)))
         self.cost = cp.sum_squares(self.y-Extender@self.u)
         
-        #self.cost = cp.quad_form(self.u, np.eye(self.N*self.m))
+        if self.lam_y != None:
+            self.cost += cp.norm(self.y, 1)*self.lam_y
 
         self.constraints = [
             self.y[:self.p] == self.y_ini,
